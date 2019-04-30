@@ -36,10 +36,10 @@ def siteblock(parser, token):
     if len(tokens) >= 2 and tokens[-2] == 'as':
         as_var = tokens[-1]
 
-    return siteblockNode(block_alias, as_var)
+    return SiteblockNode(block_alias, as_var)
 
 
-class siteblockNode(template.Node):
+class SiteblockNode(template.Node):
 
     def __init__(self, block_alias, as_var=None):
         self.block_alias = block_alias
