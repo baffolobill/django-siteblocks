@@ -51,6 +51,10 @@ class SiteblockNode(template.Node):
             block_alias = block_alias.resolve(context)
 
         contents = siteblocks.get(block_alias, context)
+        
+        django_engine = template.engines['django']
+        contents = django_engine.from_string(contents)\
+                                .render(context, context.get('request', None))
 
         if self.as_var is not None:
             context[self.as_var] = contents
