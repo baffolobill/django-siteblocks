@@ -181,6 +181,11 @@ class SiteBlocks(object):
             static_block_contents = choice(lookup_area[resolved_view_name])
         else:
             for url, contents in lookup_area.items():
+                # Some `url` are strings. Skip them, 
+                # because they don't have `.match(...)` method
+                if isinstance(url, str):
+                    continue
+
                 if url.match(current_url):
                     static_block_contents = choice(contents)
                     break
