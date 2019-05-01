@@ -9,55 +9,33 @@ register = template.Library()
 siteblocks = SiteBlocks()
 
 
-@register.tag
-def siteblock(parser, token):
+@register.simple_tag(takes_context=True)
+def siteblock(context, block_alias):
     """Two notation types are acceptable:
 
         1. Two arguments:
            {% siteblock "myblock" %}
            Used to render "myblock" site block.
-           
+
         2. Four arguments:
            {% siteblock "myblock" as myvar %}
            Used to put "myblock" site block into "myvar" template variable.
-           
+
     """
-    tokens = token.split_contents()
-    tokens_num = len(tokens)
 
-    if tokens_num not in (2, 4):
-        raise template.TemplateSyntaxError(
-            '%r tag requires two or four arguments. '
-            'E.g.: {%% siteblock "myblock" %%} or {%% siteblock "myblock" as myvar %%}.' % tokens[0])
+    if isinstance(block_alias, FilterExpression):
+        block_alias = block_alias.resolve(context)
 
-    block_alias = parser.compile_filter(tokens[1])
-    as_var = None
-    tokens = tokens[2:]
-    if len(tokens) >= 2 and tokens[-2] == 'as':
-        as_var = tokens[-1]
+    contents = siteblocks.get(block_alias, context)
 
-    return SiteblockNode(block_alias, as_var)
+    django_engine = template.engines['django']
 
+    # Dirty hack to convert RequestContext to initial context, passed in a View.
+    # This is necessary, because `Template.render(...)` requires that
+    # `context` to be a dict. It don't check if `context` is already a RequestContext,
+    # just always converts the dict to RequestContext.
+    initial_context = context.dicts[3]
 
-class SiteblockNode(template.Node):
-
-    def __init__(self, block_alias, as_var=None):
-        self.block_alias = block_alias
-        self.as_var = as_var
-        
-    def render(self, context):
-        block_alias = self.block_alias
-        if isinstance(self.block_alias, FilterExpression):
-            block_alias = block_alias.resolve(context)
-
-        contents = siteblocks.get(block_alias, context)
-        
-        django_engine = template.engines['django']
-        contents = django_engine.from_string(contents)\
-                                .render(context, context.get('request', None))
-
-        if self.as_var is not None:
-            context[self.as_var] = contents
-            return ''
-
-        return contents
+    contents = django_engine.from_string(contents)\
+                            .render(initial_context, context.request)
+    return contents
